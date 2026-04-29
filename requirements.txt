@@ -1,0 +1,30 @@
+# Web scraping
+requests>=2.31.0
+trafilatura>=1.8.0
+markdownify>=0.12.1
+
+# PDF processing
+pymupdf4llm>=0.0.17
+
+# Chunking / tokenization
+tiktoken>=0.7.0
+
+# Embeddings
+sentence-transformers>=3.0.0
+
+# Vector store
+chromadb>=0.5.0
+
+# LLM clients
+google-generativeai>=0.7.0
+
+# UI
+streamlit>=1.35.0
+
+# Config
+python-dotenv>=1.0.0
+
+# Testing
+pytest>=8.0.0
+pytest-mock>=3.14.0
+hypothesis>=6.100.0

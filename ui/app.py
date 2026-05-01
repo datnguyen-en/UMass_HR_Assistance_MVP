@@ -46,10 +46,10 @@ def main():
             st.write(entry["question"])
         with st.chat_message("assistant"):
             st.write(entry["answer"])
-            if entry["citations"]:
+            if entry.get("citations"):
                 st.markdown("**Sources:**")
                 for c in entry["citations"]:
-                    st.markdown(f"- [{c.title}]({c.source})" if c.source.startswith("http") else f"- {c.title} (`{c.source}`)")
+                    st.markdown(f"- [{c.title}]({c.source})")
 
     # Input
     question = st.chat_input("Ask an HR question...")
@@ -70,18 +70,17 @@ def main():
                     response = llm_client.generate(question, chunks)
                     st.write(response.answer)
 
-                    if response.citations:
+                    # Show only web URL sources (skip hashed PDF filenames)
+                    web_citations = [c for c in response.citations if c.source.startswith("http")]
+                    if web_citations:
                         st.markdown("**Sources:**")
-                        for c in response.citations:
-                            if c.source.startswith("http"):
-                                st.markdown(f"- [{c.title}]({c.source})")
-                            else:
-                                st.markdown(f"- {c.title} (`{c.source}`)")
+                        for c in web_citations:
+                            st.markdown(f"- [{c.title}]({c.source})")
 
                     st.session_state.history.append({
                         "question": question,
                         "answer": response.answer,
-                        "citations": response.citations,
+                        "citations": web_citations,
                     })
 
                 except LLMError:

@@ -42,20 +42,32 @@ class IngestionPipeline:
         all_chunks = []
         docs_processed = 0
         failures = []
+        discovered_pdfs: dict[str, Path] = {}  # pdf_url → local path, to avoid duplicates
 
-        # Scrape web URLs
+        # Scrape web URLs and discover PDFs linked from each page
         for url in cfg.source_urls:
             try:
                 result = scraper.fetch_and_convert(url)
                 if result is None:
                     failures.append(url)
                     continue
-                markdown, metadata = result
+                markdown, metadata, html = result
                 scraper.save(markdown, metadata)
                 chunks = chunker.chunk(markdown, metadata)
                 all_chunks.extend(chunks)
                 docs_processed += 1
                 logger.info("Scraped and chunked: %s (%d chunks)", url, len(chunks))
+
+                # Discover and download PDFs linked from this page
+                pdf_links = scraper.find_pdf_links(url, html)
+                if pdf_links:
+                    logger.info("Found %d PDF link(s) on %s", len(pdf_links), url)
+                for pdf_url in pdf_links:
+                    if pdf_url not in discovered_pdfs:
+                        pdf_path = scraper.download_pdf(pdf_url)
+                        if pdf_path:
+                            discovered_pdfs[pdf_url] = pdf_path
+
             except ScraperError as e:
                 logger.error("Scraper error for %s: %s", url, e)
                 failures.append(url)
@@ -63,9 +75,12 @@ class IngestionPipeline:
                 logger.error("Unexpected error for %s: %s", url, e)
                 failures.append(url)
 
-        # Process PDFs from data/raw/
-        pdf_dir = Path(cfg.raw_data_dir)
-        for pdf_path in pdf_dir.glob("*.pdf"):
+        # Process PDFs: both discovered from web pages and any manually placed in data/raw/
+        pdf_paths_to_process = set(discovered_pdfs.values())
+        for pdf_path in Path(cfg.raw_data_dir).glob("*.pdf"):
+            pdf_paths_to_process.add(pdf_path)
+
+        for pdf_path in pdf_paths_to_process:
             try:
                 result = pdf_processor.process(pdf_path)
                 if result is None:

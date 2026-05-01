@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 PROMPT_TEMPLATE = """\
 You are a helpful UMass HR assistant. Answer the question using ONLY the provided context.
 If the context does not contain enough information, say so clearly.
-Always cite your sources.
+Do NOT include any source references, filenames, or citations in your answer.
 
 Context:
 {context}
@@ -58,9 +58,6 @@ class LLMClient:
         return LLMResponse(answer=answer, citations=citations)
 
     def _build_prompt(self, query: str, chunks: List[RetrievedChunk]) -> str:
-        context_lines = []
-        for chunk in chunks:
-            source = chunk.metadata.source_url or chunk.metadata.source_filename or "unknown"
-            context_lines.append(f"{chunk.text} [Source: {source}]")
-        context = "\n\n".join(context_lines)
+        # Pass chunk text only — no source tags so Gemini doesn't echo filenames
+        context = "\n\n".join(chunk.text for chunk in chunks)
         return PROMPT_TEMPLATE.format(context=context, query=query)
